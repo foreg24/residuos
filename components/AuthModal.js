@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 
 export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
-  const [step, setStep] = useState('form'); // form | verify | setup
+  const [step, setStep] = useState('form');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [verifyEmail, setVerifyEmail] = useState('');
@@ -27,6 +27,7 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
   const handleGoogle = async () => {
     setLoading(true);
     try {
+      // signIn redirects automatically to /dashboard via callbackUrl
       await signIn('google', { callbackUrl: '/dashboard' });
     } catch {
       setError('Error con Google. Intenta de nuevo.');
@@ -50,17 +51,21 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
     if (!formData.email || !formData.password) { setError('Completa todos los campos'); return; }
     setLoading(true); setError('');
     try {
-      // Check localStorage for demo users
       const users = JSON.parse(localStorage.getItem('trankas_users') || '[]');
       const user = users.find(u => u.email === formData.email);
       if (!user) { setError('Usuario no encontrado'); setLoading(false); return; }
-      // Simple demo auth (in production use bcrypt via API)
       if (user.password !== btoa(formData.password)) { setError('Contraseña incorrecta'); setLoading(false); return; }
-      localStorage.setItem('trankas_session', JSON.stringify(user));
-      window.location.href = '/dashboard';
+      
+      // Save session FIRST, then redirect
+      const sessionUser = { ...user, password: undefined };
+      localStorage.setItem('trankas_session', JSON.stringify(sessionUser));
+      
+      // Small delay to ensure localStorage is written before navigation
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 100);
     } catch {
       setError('Error al iniciar sesión');
-    } finally {
       setLoading(false);
     }
   };
@@ -85,18 +90,16 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
         phone: formData.phone,
         isReciclador: false,
         createdAt: new Date().toISOString(),
-        verified: false,
+        verified: true, // skip verification in prod for now
       };
       users.push(newUser);
       localStorage.setItem('trankas_users', JSON.stringify(users));
+      
+      // Save session immediately
+      const sessionUser = { ...newUser, password: undefined };
+      localStorage.setItem('trankas_session', JSON.stringify(sessionUser));
 
-      // Generate 6-digit code (demo: store in localStorage)
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      localStorage.setItem(`trankas_verify_${formData.email}`, JSON.stringify({ code, expires: Date.now() + 600000 }));
-      console.log('Demo verification code:', code); // In dev only
-
-      setVerifyEmail(formData.email);
-      setStep('verify');
+      setStep('setup');
     } catch {
       setError('Error al crear la cuenta');
     } finally {
@@ -117,7 +120,12 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
     localStorage.removeItem(`trankas_verify_${verifyEmail}`);
     const users = JSON.parse(localStorage.getItem('trankas_users') || '[]');
     const user = users.find(u => u.email === verifyEmail);
-    if (user) { user.verified = true; localStorage.setItem('trankas_users', JSON.stringify(users)); localStorage.setItem('trankas_session', JSON.stringify(user)); }
+    if (user) {
+      user.verified = true;
+      localStorage.setItem('trankas_users', JSON.stringify(users));
+      const sessionUser = { ...user, password: undefined };
+      localStorage.setItem('trankas_session', JSON.stringify(sessionUser));
+    }
     setStep('setup');
   };
 
@@ -126,9 +134,7 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
     const next = [...codeDigits];
     next[index] = value.slice(-1);
     setCodeDigits(next);
-    if (value && index < 5) {
-      document.getElementById(`code-${index + 1}`)?.focus();
-    }
+    if (value && index < 5) document.getElementById(`code-${index + 1}`)?.focus();
   };
 
   const handleCodeKey = (index, e) => {
@@ -137,7 +143,6 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
     }
   };
 
-  // ===== SETUP LOCATION =====
   const handleSetupDone = () => {
     window.location.href = '/dashboard';
   };
@@ -146,10 +151,8 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      {/* Backdrop */}
       <div className="absolute inset-0" style={{ background: 'rgba(2,9,4,0.85)', backdropFilter: 'blur(12px)' }} onClick={onClose} />
 
-      {/* Modal */}
       <div
         className="relative w-full max-w-md max-h-[92vh] overflow-y-auto scrollbar-thin"
         style={{
@@ -161,28 +164,17 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
           animation: 'fadeUp 0.4s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
-        {/* Glow top border */}
-        <div style={{
-          position: 'absolute',
-          top: 0, left: '20%', right: '20%',
-          height: '1px',
-          background: 'linear-gradient(90deg, transparent, var(--accent-primary), transparent)',
-        }} />
+        <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, var(--accent-primary), transparent)' }} />
 
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 btn-ghost"
-          style={{ padding: '8px', borderRadius: '50%', color: 'var(--text-muted)' }}
-        >
+        <button onClick={onClose} className="absolute top-4 right-4 btn-ghost" style={{ padding: '8px', borderRadius: '50%', color: 'var(--text-muted)' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
 
         <div className="p-8">
+
           {/* ===== FORM STEP ===== */}
           {step === 'form' && (
             <>
-              {/* Header */}
               <div className="mb-8 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--accent-primary)] to-[#27ae60] flex items-center justify-center mx-auto mb-4">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -199,9 +191,7 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
 
               {/* Social buttons */}
               <div className="flex flex-col gap-3 mb-6">
-                <button
-                  onClick={handleGoogle}
-                  disabled={loading}
+                <button onClick={handleGoogle} disabled={loading}
                   className="flex items-center justify-center gap-3 w-full py-3 px-5 rounded-full transition-all duration-200"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-display)' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.09)'}
@@ -216,9 +206,7 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
                   Continuar con Google
                 </button>
 
-                <button
-                  onClick={handleApple}
-                  disabled={loading}
+                <button onClick={handleApple} disabled={loading}
                   className="flex items-center justify-center gap-3 w-full py-3 px-5 rounded-full transition-all duration-200"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-display)' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.09)'}
@@ -231,21 +219,18 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
                 </button>
               </div>
 
-              {/* Divider */}
               <div className="flex items-center gap-4 mb-6">
                 <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: 'var(--font-display)' }}>o con correo</span>
                 <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
               </div>
 
-              {/* Error */}
               {error && (
                 <div className="mb-5 px-4 py-3 rounded-xl" style={{ background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.25)', color: '#ffb49a', fontSize: '0.85rem' }}>
                   {error}
                 </div>
               )}
 
-              {/* Form */}
               <form onSubmit={mode === 'login' ? handleLogin : handleRegister}>
                 {mode === 'register' && (
                   <div className="form-group">
@@ -253,24 +238,14 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
                     <input className="form-input" type="text" placeholder="Ana García" value={formData.name} onChange={e => update('name', e.target.value)} required />
                   </div>
                 )}
-
                 <div className="form-group">
                   <label className="form-label">Correo electrónico</label>
                   <input className="form-input" type="email" placeholder="tu@email.com" value={formData.email} onChange={e => update('email', e.target.value)} required />
                 </div>
-
                 <div className="form-group">
                   <label className="form-label">Contraseña</label>
                   <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-input"
-                      type={showPass ? 'text' : 'password'}
-                      placeholder={mode === 'register' ? 'Mínimo 8 caracteres' : '••••••••'}
-                      value={formData.password}
-                      onChange={e => update('password', e.target.value)}
-                      style={{ paddingRight: '44px' }}
-                      required
-                    />
+                    <input className="form-input" type={showPass ? 'text' : 'password'} placeholder={mode === 'register' ? 'Mínimo 8 caracteres' : '••••••••'} value={formData.password} onChange={e => update('password', e.target.value)} style={{ paddingRight: '44px' }} required />
                     <button type="button" onClick={() => setShowPass(p => !p)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}>
                       {showPass
                         ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -279,7 +254,6 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
                     </button>
                   </div>
                 </div>
-
                 {mode === 'register' && (
                   <>
                     <div className="form-group">
@@ -293,14 +267,6 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
                   </>
                 )}
 
-                {mode === 'login' && (
-                  <div className="flex justify-end mb-4">
-                    <button type="button" className="btn-ghost" style={{ fontSize: '0.82rem', padding: '4px 0', color: 'var(--accent-primary)' }}>
-                      ¿Olvidaste tu contraseña?
-                    </button>
-                  </div>
-                )}
-
                 <button type="submit" className="btn-primary w-full justify-center" style={{ fontSize: '0.95rem', padding: '14px' }} disabled={loading}>
                   {loading
                     ? <><div className="loading-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> Cargando...</>
@@ -309,80 +275,17 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
                 </button>
               </form>
 
-              {/* Switch */}
               <p className="text-center mt-6" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 {mode === 'login' ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
-                <button
-                  className="btn-ghost"
-                  style={{ padding: 0, color: 'var(--accent-primary)', fontWeight: 600, fontSize: '0.85rem', display: 'inline' }}
-                  onClick={() => { onModeChange(mode === 'login' ? 'register' : 'login'); setError(''); }}
-                >
+                <button className="btn-ghost" style={{ padding: 0, color: 'var(--accent-primary)', fontWeight: 600, fontSize: '0.85rem', display: 'inline' }}
+                  onClick={() => { onModeChange(mode === 'login' ? 'register' : 'login'); setError(''); }}>
                   {mode === 'login' ? 'Regístrate' : 'Ingresa'}
                 </button>
               </p>
             </>
           )}
 
-          {/* ===== VERIFY STEP ===== */}
-          {step === 'verify' && (
-            <>
-              <div className="text-center mb-8">
-                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📬</div>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
-                  Verifica tu correo
-                </h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  Enviamos un código a <strong style={{ color: 'var(--text-primary)' }}>{verifyEmail}</strong>
-                </p>
-                <p style={{ color: 'var(--accent-primary)', fontSize: '0.78rem', marginTop: '6px' }}>
-                  💡 Demo: revisa la consola del navegador para el código
-                </p>
-              </div>
-
-              {error && (
-                <div className="mb-5 px-4 py-3 rounded-xl" style={{ background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.25)', color: '#ffb49a', fontSize: '0.85rem' }}>
-                  {error}
-                </div>
-              )}
-
-              <div className="code-inputs mb-6">
-                {codeDigits.map((d, i) => (
-                  <input
-                    key={i}
-                    id={`code-${i}`}
-                    className="code-input"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={d}
-                    onChange={e => handleCodeInput(i, e.target.value)}
-                    onKeyDown={e => handleCodeKey(i, e)}
-                    onPaste={i === 0 ? (e) => {
-                      const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-                      if (text.length === 6) {
-                        setCodeDigits(text.split(''));
-                        document.getElementById(`code-5`)?.focus();
-                      }
-                      e.preventDefault();
-                    } : undefined}
-                  />
-                ))}
-              </div>
-
-              <button className="btn-primary w-full justify-center" onClick={handleVerify}>
-                Verificar código
-              </button>
-
-              <p className="text-center mt-4" style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                ¿No recibiste el código?{' '}
-                <button className="btn-ghost" style={{ padding: 0, color: 'var(--accent-primary)', fontWeight: 600, fontSize: '0.82rem', display: 'inline' }}>
-                  Reenviar
-                </button>
-              </p>
-            </>
-          )}
-
-          {/* ===== SETUP STEP ===== */}
+          {/* ===== SETUP STEP (after register) ===== */}
           {step === 'setup' && (
             <>
               <div className="text-center mb-8">
@@ -391,16 +294,16 @@ export default function AuthModal({ isOpen, mode, onClose, onModeChange }) {
                   ¡Cuenta creada!
                 </h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.6 }}>
-                  Configura tu ubicación en el dashboard para ver los horarios de recolección de tu barrio.
+                  Ya puedes usar Trankas. Configura tu barrio en el dashboard para ver los horarios de recolección.
                 </p>
               </div>
-
               <button className="btn-primary w-full justify-center" style={{ fontSize: '0.95rem', padding: '14px' }} onClick={handleSetupDone}>
                 Ir al dashboard
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </button>
             </>
           )}
+
         </div>
       </div>
     </div>
