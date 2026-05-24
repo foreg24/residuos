@@ -2,7 +2,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 const canvas = document.getElementById('hero-canvas');
 const ctx = canvas.getContext('2d');
-const FRAME_COUNT = 60;
+const FRAME_COUNT = 51;
 const FRAME_PATH = i => `/frames/${String(i+1).padStart(4,'0')}.jpg`;
 
 const images = [];
