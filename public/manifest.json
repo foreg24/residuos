@@ -1,7 +1,7 @@
 {
   "name": "Trankas — Gestión de Residuos Neiva",
   "short_name": "Trankas",
-  "description": "App inteligente para gestión de residuos en Neiva, Huila. Horarios de recolección, reportes y recicladores.",
+  "description": "App inteligente para gestión de residuos en Neiva, Huila.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -13,6 +13,5 @@
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
   "categories": ["productivity", "utilities", "lifestyle"],
-  "lang": "es",
-  "dir": "ltr"
+  "lang": "es"
 }
