@@ -23,8 +23,8 @@ export default function LandingPage() {
     // Nombra los archivos: 0001.jpg, 0002.jpg, ... 00NN.jpg
     // O cualquier formato que uses (jpg, png, webp)
     // =====================================================
-    const FRAME_COUNT = 60; // ← cambia este número al total de tus frames
-    const FRAME_PATH = (i) => `/frames/${String(i + 1).padStart(4, '0')}.jpg`; // ← ajusta la extensión si usas .png o .webp
+    const FRAME_COUNT = 36; // ← cambia este número al total de tus frames
+    const FRAME_PATH = (i) => `/frames/${String(i + 1).padStart(4, '0')}.png`; // ← ajusta la extensión si usas .png o .webp
 
     const images = [];
     let loadedCount = 0;
