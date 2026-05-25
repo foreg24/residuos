@@ -11,7 +11,6 @@ const db = require('./db');
 const app = express();
 const JWT_SECRET = process.env.SESSION_SECRET || 'trankas-secret-2025';
 
-// Simple JWT implementation (no extra dependency)
 function signToken(payload) {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() })).toString('base64url');
