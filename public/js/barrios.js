@@ -29,28 +29,28 @@ const ALL_BARRIOS = Object.entries(BARRIOS_POR_COMUNA).flatMap(([comuna, barrios
 ).sort((a, b) => a.nombre.localeCompare(b.nombre));
 
 const PUNTOS_ACOPIO = [
-  { id: 1, nombre: 'Punto ECO Centro', direccion: 'Carrera 5 # 10-45, Centro', tipos: ['plastico','papel','vidrio'], lat: 2.9376, lng: -75.2720 },
-  { id: 2, nombre: 'Estación Reciclaje Norte', direccion: 'Avenida 26 # 5-30, Prado Norte', tipos: ['plastico','metal','papel'], lat: 2.9500, lng: -75.2800 },
-  { id: 3, nombre: 'Centro de Acopio Sur', direccion: 'Carrera 33 # 1-20, Zona Industrial', tipos: ['organico','vegetal'], lat: 2.9200, lng: -75.2600 },
-  { id: 4, nombre: 'Punto Verde San Martín', direccion: 'Calle 8 # 15-50, San Martín', tipos: ['plastico','vidrio','papel'], lat: 2.9350, lng: -75.2650 },
-  { id: 5, nombre: 'Reciclaje El Carmen', direccion: 'Carrera 8 # 12-30, El Carmen', tipos: ['metal','electronicos'], lat: 2.9400, lng: -75.2700 },
-  { id: 6, nombre: 'EcoPunto La Toma', direccion: 'Calle 15 # 5-60, La Toma', tipos: ['plastico','papel','organico'], lat: 2.9380, lng: -75.2750 },
+  { id: 1, nombre: 'Punto ECO Centro', direccion: 'Carrera 5 # 10-45, Centro', tipos: ['plastico','papel','vidrio'], lat: 2.929264, lng: -75.289949 },
+  { id: 2, nombre: 'Estación Reciclaje Norte', direccion: 'Calle 44 #22-2, Prado Norte', tipos: ['plastico','metal','papel'], lat: 2.955566, lng: -75.280355 },
+  { id: 3, nombre: 'Centro de Acopio Sur', direccion: 'Carrera 30 #24-103, Puertas del Sol', tipos: ['organico','vegetal'], lat: 2.900401, lng: -75.269241 },
+  { id: 4, nombre: 'Punto Verde San Martín', direccion: 'Carrera 15c # 1a-42, San Martín', tipos: ['plastico','vidrio','papel'], lat: 2.920214, lng: -75.276859 },
+  { id: 5, nombre: 'Reciclaje El Carmen', direccion: 'Vía Neiva-Vegalarga Km 4, El Carmen', tipos: ['metal','electronicos'], lat: 2.935632, lng: -75.215003 },
+  { id: 6, nombre: 'EcoPunto La Toma', direccion: 'Carrera 20 # 12-46, La Toma', tipos: ['plastico','papel','organico'], lat: 2.934882, lng: -75.277382 },
 ];
 
 const ZONA_POLYGONS = {
-  '01': [[2.9550,-75.3100],[2.9650,-75.2900],[2.9600,-75.2700],[2.9500,-75.2650],[2.9400,-75.2700],[2.9380,-75.2900],[2.9430,-75.3050]],
-  '02': [[2.9500,-75.2650],[2.9600,-75.2700],[2.9550,-75.2450],[2.9400,-75.2300],[2.9200,-75.2350],[2.9150,-75.2500],[2.9300,-75.2600]],
+  '01': [[2.919293,-75.288402],[2.920180,-75.283910],[2.917772,-75.270034],[2.923466,-75.266971],[2.922202,-75.259892],[2.914803,-75.267059],[2.887797,-75.250343],[2.885064,-75.255916],[2.890876,-75.261664],[2.888468,-75.275428],[2.894137,-75.277707],[2.898537,-75.286671],[2.911560,-75.287175],[2.912939,-75.288425]],
+  '02': [[2.944848,-75.271310],[2.950877,-75.274320],[2.955421,-75.269823],[2.956058,-75.251659],[2.951991,-75.249959],[2.945290,-75.234344],[2.940198,-75.240859],[2.931959,-75.237796],[2.925967,-75.255934]],
   '03': [[2.9380,-75.2900],[2.9400,-75.2700],[2.9300,-75.2600],[2.9200,-75.2700],[2.9180,-75.2850],[2.9250,-75.3000],[2.9320,-75.3000]],
   '04': [[2.9180,-75.2850],[2.9200,-75.2700],[2.9150,-75.2500],[2.9000,-75.2600],[2.8950,-75.2800],[2.9050,-75.3000],[2.9130,-75.2950]],
   '05': [[2.9430,-75.3050],[2.9380,-75.2900],[2.9320,-75.3000],[2.9250,-75.3000],[2.9180,-75.2850],[2.9130,-75.2950],[2.9050,-75.3000],[2.9000,-75.3200],[2.9150,-75.3350],[2.9350,-75.3300]],
 };
 
 const ZONA_INFO = {
-  '01': { fill: '#c8e6c9', border: '#4caf50', comunas: ['1','2'], label: 'Lun·Mié·Vie  7AM–1PM' },
-  '02': { fill: '#ef9a9a', border: '#f44336', comunas: ['5','7','10'], label: 'Mar·Jue·Sáb  7AM–1PM' },
-  '03': { fill: '#80cbc4', border: '#009688', comunas: ['3','4'], label: 'Lun·Mié·Vie  1PM–7PM' },
-  '04': { fill: '#a5d6a7', border: '#388e3c', comunas: ['6','8'], label: 'Mar·Jue·Sáb  1PM–7PM' },
-  '05': { fill: '#b2dfdb', border: '#00897b', comunas: ['9'], label: 'Lun–Sáb  7AM–3PM' },
+  '01': { fill: '#c8e6c9', border: '#4caf50', comunas: ['1','2'], label: 'Lun·Mié·Vie  6AM–6PM' },
+  '02': { fill: '#ef9a9a', border: '#f44336', comunas: ['5','7','10'], label: 'Mar·Jue·Sáb  6AM–6PM' },
+  '03': { fill: '#80cbc4', border: '#009688', comunas: ['3','4'], label: 'Lun·Mié·Vie  6PM–6AM' },
+  '04': { fill: '#a5d6a7', border: '#388e3c', comunas: ['6','8'], label: 'Mar·Jue·Sáb  6PM–6AM' },
+  '05': { fill: '#b2dfdb', border: '#00897b', comunas: ['9'], label: 'Lun–Sáb  6PM–6AM' },
 };
 
 function getBarrioInfo(nombre) {
