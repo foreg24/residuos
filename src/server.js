@@ -95,14 +95,29 @@ if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPL
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/?error=google' }),
-  (req, res) => {
-    req.session.userId = req.user.id;
-    res.redirect('/dashboard');
+app.get('/auth/google', (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.redirect('/?error=google_not_configured');
   }
-);
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
+
+app.get('/auth/google/callback', (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.redirect('/?error=google_not_configured');
+  }
+  passport.authenticate('google', { failureRedirect: '/?error=google' })(req, res, (err) => {
+    if (err) { console.error('Google OAuth error:', err); return res.redirect('/?error=google'); }
+    next();
+  });
+}, (req, res) => {
+  if (!req.user) return res.redirect('/?error=google');
+  req.session.userId = req.user.id;
+  req.session.save((err) => {
+    if (err) { console.error('Session save error:', err); return res.redirect('/?error=session'); }
+    res.redirect('/dashboard');
+  });
+});
 
 app.post('/auth/apple/callback',
   passport.authenticate('apple', { failureRedirect: '/?error=apple' }),
@@ -113,28 +128,44 @@ app.post('/auth/apple/callback',
 );
 
 app.post('/api/auth/register', async (req, res) => {
-  const { name, email, password, phone } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ error: 'Nombre, email y contraseña requeridos' });
-  if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
-  const existing = await db.getUserByEmail(email);
-  if (existing) return res.status(400).json({ error: 'Este correo ya está registrado' });
-  const user = await db.createUser({ name, email, password, phone });
-  req.session.userId = user.id;
-  const { password: _, ...safeUser } = user;
-  res.json({ success: true, user: safeUser });
+  try {
+    const { name, email, password, phone } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ error: 'Nombre, email y contraseña requeridos' });
+    if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    const existing = await db.getUserByEmail(email);
+    if (existing) return res.status(400).json({ error: 'Este correo ya está registrado' });
+    const user = await db.createUser({ name, email, password, phone });
+    req.session.userId = user.id;
+    req.session.save((err) => {
+      if (err) { console.error('Session save error:', err); return res.status(500).json({ error: 'Error al guardar sesión' }); }
+      const { password: _, ...safeUser } = user;
+      res.json({ success: true, user: safeUser });
+    });
+  } catch (e) {
+    console.error('Register error:', e);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
-  const user = await db.getUserByEmail(email);
-  if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
-  if (!user.password) return res.status(401).json({ error: 'Esta cuenta usa login con Google o Apple' });
-  const valid = await db.verifyPassword(password, user.password);
-  if (!valid) return res.status(401).json({ error: 'Contraseña incorrecta' });
-  req.session.userId = user.id;
-  const { password: _, ...safeUser } = user;
-  res.json({ success: true, user: safeUser });
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+    const user = await db.getUserByEmail(email);
+    if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
+    if (!user.password) return res.status(401).json({ error: 'Esta cuenta usa login con Google o Apple' });
+    const valid = await db.verifyPassword(password, user.password);
+    if (!valid) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    req.session.userId = user.id;
+    req.session.save((err) => {
+      if (err) { console.error('Session save error:', err); return res.status(500).json({ error: 'Error al guardar sesión' }); }
+      const { password: _, ...safeUser } = user;
+      res.json({ success: true, user: safeUser });
+    });
+  } catch (e) {
+    console.error('Login error:', e);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
 });
 
 app.post('/api/auth/logout', (req, res) => {
