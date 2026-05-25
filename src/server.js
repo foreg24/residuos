@@ -1,32 +1,59 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
 const cors = require('cors');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const AppleStrategy = require('passport-apple');
 const path = require('path');
+const crypto = require('crypto');
 const db = require('./db');
-const { requireAuth } = require('./middleware/auth');
 
 const app = express();
+const JWT_SECRET = process.env.SESSION_SECRET || 'trankas-secret-2025';
+
+// Simple JWT implementation (no extra dependency)
+function signToken(payload) {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() })).toString('base64url');
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${sig}`;
+}
+
+function verifyToken(token) {
+  try {
+    const [header, body, sig] = token.split('.');
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+    if (sig !== expected) return null;
+    return JSON.parse(Buffer.from(body, 'base64url').toString());
+  } catch { return null; }
+}
+
+function setAuthCookie(res, userId) {
+  const token = signToken({ userId });
+  res.cookie('trankas_auth', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/'
+  });
+}
+
+function requireAuth(req, res, next) {
+  const token = req.cookies?.trankas_auth;
+  if (!token) return res.status(401).json({ error: 'No autenticado' });
+  const payload = verifyToken(token);
+  if (!payload?.userId) return res.status(401).json({ error: 'Sesión inválida' });
+  req.userId = payload.userId;
+  next();
+}
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'trankas-secret-2025',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000
-  }
-}));
-
+app.use(require('cookie-parser')());
 app.use(passport.initialize());
-app.use(passport.session());
+
 const PUBLIC_DIR = path.join(__dirname, '../public');
 if (process.env.NODE_ENV !== 'production') {
   app.use(express.static(PUBLIC_DIR));
@@ -34,12 +61,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
-  try {
-    const user = await db.getUserById(id);
-    done(null, user);
-  } catch (e) {
-    done(e, null);
-  }
+  try { done(null, await db.getUserById(id)); } catch (e) { done(e, null); }
 });
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
@@ -112,17 +134,14 @@ app.get('/auth/google/callback', (req, res, next) => {
   });
 }, (req, res) => {
   if (!req.user) return res.redirect('/?error=google');
-  req.session.userId = req.user.id;
-  req.session.save((err) => {
-    if (err) { console.error('Session save error:', err); return res.redirect('/?error=session'); }
-    res.redirect('/dashboard');
-  });
+  setAuthCookie(res, req.user.id);
+  res.redirect('/dashboard');
 });
 
 app.post('/auth/apple/callback',
   passport.authenticate('apple', { failureRedirect: '/?error=apple' }),
   (req, res) => {
-    req.session.userId = req.user.id;
+    setAuthCookie(res, req.user.id);
     res.redirect('/dashboard');
   }
 );
@@ -135,12 +154,9 @@ app.post('/api/auth/register', async (req, res) => {
     const existing = await db.getUserByEmail(email);
     if (existing) return res.status(400).json({ error: 'Este correo ya está registrado' });
     const user = await db.createUser({ name, email, password, phone });
-    req.session.userId = user.id;
-    req.session.save((err) => {
-      if (err) { console.error('Session save error:', err); return res.status(500).json({ error: 'Error al guardar sesión' }); }
-      const { password: _, ...safeUser } = user;
-      res.json({ success: true, user: safeUser });
-    });
+    setAuthCookie(res, user.id);
+    const { password: _, ...safeUser } = user;
+    res.json({ success: true, user: safeUser });
   } catch (e) {
     console.error('Register error:', e);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -156,12 +172,10 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user.password) return res.status(401).json({ error: 'Esta cuenta usa login con Google o Apple' });
     const valid = await db.verifyPassword(password, user.password);
     if (!valid) return res.status(401).json({ error: 'Contraseña incorrecta' });
-    req.session.userId = user.id;
-    req.session.save((err) => {
-      if (err) { console.error('Session save error:', err); return res.status(500).json({ error: 'Error al guardar sesión' }); }
-      const { password: _, ...safeUser } = user;
-      res.json({ success: true, user: safeUser });
-    });
+    req.userId = user.id;
+    setAuthCookie(res, user.id);
+    const { password: _, ...safeUser } = user;
+    res.json({ success: true, user: safeUser });
   } catch (e) {
     console.error('Login error:', e);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -169,12 +183,12 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
-  req.session.destroy();
+  res.clearCookie("trankas_auth", { path: "/" });
   res.json({ success: true });
 });
 
 app.get('/api/user', requireAuth, async (req, res) => {
-  const user = await db.getUserById(req.session.userId);
+  const user = await db.getUserById(req.userId);
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
   const { password: _, ...safeUser } = user;
   res.json(safeUser);
@@ -186,33 +200,33 @@ app.patch('/api/user', requireAuth, async (req, res) => {
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
   }
-  const updated = await db.updateUser(req.session.userId, updates);
+  const updated = await db.updateUser(req.userId, updates);
   if (!updated) return res.status(404).json({ error: 'Usuario no encontrado' });
   const { password: _, ...safeUser } = updated;
   res.json(safeUser);
 });
 
 app.get('/api/reports', requireAuth, async (req, res) => {
-  const reports = await db.getUserReports(req.session.userId);
+  const reports = await db.getUserReports(req.userId);
   res.json(reports);
 });
 
 app.post('/api/reports', requireAuth, async (req, res) => {
   const { tipo, descripcion, ubicacion, imagen } = req.body;
   if (!tipo) return res.status(400).json({ error: 'Tipo requerido' });
-  const report = await db.createReport({ userId: req.session.userId, tipo, descripcion, ubicacion, imagen });
+  const report = await db.createReport({ userId: req.userId, tipo, descripcion, ubicacion, imagen });
   res.json(report);
 });
 
 app.get('/api/solicitudes', requireAuth, async (req, res) => {
-  const soles = await db.getUserSolicitudes(req.session.userId);
+  const soles = await db.getUserSolicitudes(req.userId);
   res.json(soles);
 });
 
 app.post('/api/solicitudes', requireAuth, async (req, res) => {
   const { tipo, volumen, descripcion, direccion, fecha, hora } = req.body;
   if (!tipo || !volumen || !direccion) return res.status(400).json({ error: 'Faltan campos requeridos' });
-  const sol = await db.createSolicitud({ userId: req.session.userId, tipo, volumen, descripcion, direccion, fecha, hora });
+  const sol = await db.createSolicitud({ userId: req.userId, tipo, volumen, descripcion, direccion, fecha, hora });
   res.json(sol);
 });
 
@@ -224,14 +238,14 @@ app.get('/api/alertas', async (req, res) => {
 app.post('/api/alertas', requireAuth, async (req, res) => {
   const { categoria, descripcion, ubicacion } = req.body;
   if (!categoria || !ubicacion) return res.status(400).json({ error: 'Categoría y ubicación requeridas' });
-  const alerta = await db.createAlerta({ userId: req.session.userId, categoria, descripcion, ubicacion });
+  const alerta = await db.createAlerta({ userId: req.userId, categoria, descripcion, ubicacion });
   res.json(alerta);
 });
 
 app.patch('/api/alertas/:id/vote', requireAuth, async (req, res) => {
   const { vote } = req.body;
   if (!['si', 'no'].includes(vote)) return res.status(400).json({ error: 'Voto inválido' });
-  const updated = await db.voteAlerta(req.params.id, req.session.userId, vote);
+  const updated = await db.voteAlerta(req.params.id, req.userId, vote);
   if (!updated) return res.status(404).json({ error: 'Alerta no encontrada' });
   res.json(updated);
 });
