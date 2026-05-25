@@ -28,7 +28,9 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 const PUBLIC_DIR = path.join(__dirname, '../public');
-app.use(express.static(PUBLIC_DIR, { maxAge: '1d' }));
+if (process.env.NODE_ENV !== 'production') {
+  app.use(express.static(PUBLIC_DIR));
+}
 
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
@@ -223,8 +225,10 @@ app.post('/api/ai/chat', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/dashboard', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'dashboard.html')));
-app.get('*', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/dashboard', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'dashboard.html')));
+  app.get('*', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Trankas running on port ${PORT}`));

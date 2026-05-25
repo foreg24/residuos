@@ -4,13 +4,24 @@
     {
       "src": "src/server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
-    { "src": "/auth/google", "dest": "src/server.js" },
-    { "src": "/auth/google/callback", "dest": "src/server.js" },
-    { "src": "/auth/apple/callback", "dest": "src/server.js" },
-    { "src": "/api/(.*)", "dest": "src/server.js" },
-    { "src": "/(.*)", "dest": "src/server.js" }
+    { "src": "/auth/google", "dest": "/src/server.js" },
+    { "src": "/auth/google/callback", "dest": "/src/server.js" },
+    { "src": "/auth/apple/callback", "dest": "/src/server.js" },
+    { "src": "/api/(.*)", "dest": "/src/server.js" },
+    { "src": "/dashboard", "dest": "/public/dashboard.html" },
+    { "src": "/js/(.*)", "dest": "/public/js/$1" },
+    { "src": "/icons/(.*)", "dest": "/public/icons/$1" },
+    { "src": "/frames/(.*)", "dest": "/public/frames/$1" },
+    { "src": "/manifest.json", "dest": "/public/manifest.json" },
+    { "src": "/sw.js", "dest": "/public/sw.js" },
+    { "src": "/", "dest": "/public/index.html" },
+    { "src": "/(.*)", "dest": "/src/server.js" }
   ]
 }
