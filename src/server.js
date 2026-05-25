@@ -59,11 +59,6 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(express.static(PUBLIC_DIR));
 }
 
-passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser(async (id, done) => {
-  try { done(null, await db.getUserById(id)); } catch (e) { done(e, null); }
-});
-
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
@@ -121,14 +116,14 @@ app.get('/auth/google', (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.redirect('/?error=google_not_configured');
   }
-  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
 });
 
 app.get('/auth/google/callback', (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.redirect('/?error=google_not_configured');
   }
-  passport.authenticate('google', { failureRedirect: '/?error=google' })(req, res, (err) => {
+  passport.authenticate('google', { failureRedirect: '/?error=google', session: false })(req, res, (err) => {
     if (err) { console.error('Google OAuth error:', err); return res.redirect('/?error=google'); }
     next();
   });
@@ -139,8 +134,9 @@ app.get('/auth/google/callback', (req, res, next) => {
 });
 
 app.post('/auth/apple/callback',
-  passport.authenticate('apple', { failureRedirect: '/?error=apple' }),
+  passport.authenticate('apple', { failureRedirect: '/?error=apple', session: false }),
   (req, res) => {
+    if (!req.user) return res.redirect('/?error=apple');
     setAuthCookie(res, req.user.id);
     res.redirect('/dashboard');
   }

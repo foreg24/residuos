@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('hero-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  const FRAME_COUNT = 51;
+  const FRAME_COUNT = 50;
   const FRAME_PATH = i => `/frames/${String(i+1).padStart(4,'0')}.png`;
   const images = [];
   let loaded = 0;
