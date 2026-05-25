@@ -278,8 +278,6 @@ function initMap() {
   Object.entries(ZONA_POLYGONS).forEach(([zona, coords]) => {
     const info = ZONA_INFO[zona];
     const poly = L.polygon(coords, { color: info.border, fillColor: info.fill, fillOpacity: .22, weight: 1.5 }).addTo(leafletMap);
-    const center = poly.getBounds().getCenter();
-    L.marker(center, { icon: L.divIcon({ html: `<div style="background:rgba(6,14,7,.88);border:1px solid ${info.border};color:#e8f5e9;padding:3px 7px;border-radius:5px;font-size:10px;font-weight:700;white-space:nowrap">Zona ${zona}</div>`, className: '', iconAnchor: [28, 10] }) }).addTo(leafletMap);
     poly.on('mouseover', function() { this.setStyle({ fillOpacity: .38 }); });
     poly.on('mouseout', function() { this.setStyle({ fillOpacity: .22 }); });
     poly.bindPopup(`<strong>Zona ${zona}</strong><br><span style="color:var(--accent);font-size:.8rem">${info.label}</span><br><small style="color:#a5c8a8">Comunas ${info.comunas.join(', ')}</small>`);
