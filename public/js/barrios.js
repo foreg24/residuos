@@ -1,13 +1,13 @@
 const BARRIOS_DATA = {
-  '1': { zona: '04', dias: 'Martes, Jueves y Sábado', horario: '6PM–6AM', nombre: 'Norte — Aeropuerto', color: '#c8e6c9' },
-  '2': { zona: '04', dias: 'Martes, Jueves y Sábado', horario: '6PM–6AM', nombre: 'Norte — Aeropuerto', color: '#c8e6c9' },
+  '1': { zona: '04', dias: 'Martes, Jueves y Sábado', horario: '6PM–6AM', nombre: 'Noroccidental', color: '#c8e6c9' },
+  '2': { zona: '04', dias: 'Martes, Jueves y Sábado', horario: '6PM–6AM', nombre: 'Nororiental', color: '#c8e6c9' },
   '3': { zona: '03', dias: 'Lunes, Miércoles y Viernes', horario: '6PM–6AM', nombre: 'Centro — Entre Ríos', color: '#80cbc4' },
   '4': { zona: '03', dias: 'Lunes, Miércoles y Viernes', horario: '6PM–6AM', nombre: 'Centro', color: '#80cbc4' },
   '5': { zona: '02', dias: 'Martes, Jueves y Sábado', horario: '6AM–6PM', nombre: 'Oriental', color: '#ef9a9a' },
   '6': { zona: '01', dias: 'Lunes, Miércoles y Viernes', horario: '6AM–6PM', nombre: 'Sur', color: '#a5d6a7' },
   '7': { zona: '02', dias: 'Martes, Jueves y Sábado', horario: '6AM–6PM', nombre: 'Centro Oriente', color: '#ef9a9a' },
   '8': { zona: '02', dias: 'Martes, Jueves y Sábado', horario: '6AM–6PM', nombre: 'Sur Oriental', color: '#a5d6a7' },
-  '9': { zona: '04', dias: 'Martes, Jueves y Sábado', horario: '6PM–6AM', nombre: 'Norte — Galindo', color: '#b2dfdb' },
+  '9': { zona: '04', dias: 'Martes, Jueves y Sábado', horario: '6PM–6AM', nombre: 'Norte', color: '#b2dfdb' },
   '10': { zona: '02', dias: 'Martes, Jueves y Sábado', horario: '6AM–6PM', nombre: 'Oriente Alto', color: '#ef9a9a' },
 };
 

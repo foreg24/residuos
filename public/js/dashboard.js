@@ -280,14 +280,14 @@ function initMap() {
     const poly = L.polygon(coords, { color: info.border, fillColor: info.fill, fillOpacity: .22, weight: 1.5 }).addTo(leafletMap);
     poly.on('mouseover', function() { this.setStyle({ fillOpacity: .38 }); });
     poly.on('mouseout', function() { this.setStyle({ fillOpacity: .22 }); });
-    poly.bindPopup(`<strong>Zona ${zona}</strong><br><span style="color:var(--accent);font-size:.8rem">${info.label}</span><br><small style="color:#a5c8a8">Comunas ${info.comunas.join(', ')}</small>`);
+    poly.bindPopup(`<<strong>Zona ${zona}</strong><br><span style="color:var(--accent);font-size:.8rem">${info.label}</span><br><small style="color:#a5c8a8">Comunas ${info.comunas.join(', ')}</small>`);
   });
 
   const ecoIcon = L.divIcon({ html: `<div style="width:30px;height:30px;background:linear-gradient(135deg,#6cd97b,#44874d);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid rgba(142,234,160,.7);box-shadow:0 0 12px rgba(108,217,123,.5);font-size:14px">♻️</div>`, className: '', iconSize: [30, 30], iconAnchor: [15, 15] });
 
   PUNTOS_ACOPIO.forEach(p => {
     L.marker([p.lat, p.lng], { icon: ecoIcon }).addTo(leafletMap)
-      .bindPopup(`<strong style="color:#e8f5e9">${p.nombre}</strong><br><span style="color:#a5c8a8;font-size:.8rem">${p.direccion}</span><br><small style="color:var(--accent)">${p.tipos.join(', ')}</small>`);
+      .bindPopup(`<<strong style="color:#e8f5e9">${p.nombre}</strong><br><span style="color:#a5c8a8;font-size:.8rem">${p.direccion}</span><br><small style="color:var(--accent)">${p.tipos.join(', ')}</small>`);
   });
 
   if (currentUser?.location?.lat && currentUser.location.lng) {
@@ -740,7 +740,7 @@ async function loadAlertas(resueltas) {
     if (!filtered.length) { el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-3)"><div style="font-size:2.5rem;margin-bottom:12px">🔕</div>No hay alertas ${resueltas?'resueltas':'activas'}</div>`; return; }
     const TIPO_IC = { acumulacion:'🗑️', basurero:'⚠️', escombros:'🧱', bloqueo:'🚧', taponamiento:'🌊', otro:'📌' };
     const TIPO_COL = { acumulacion:'#f39c12', basurero:'#e74c3c', escombros:'#95a5a6', bloqueo:'#e67e22', taponamiento:'#3498db', otro:'#9b59b6' };
-    const timeAgo = d => { const s=(Date.now()-new Date(d))/1000; return s<3600?`Hace ${Math.round(s/60)}min`:s<86400?`Hace ${Math.round(s/3600)}h`:`Hace ${Math.round(s/86400)}d`; };
+    const timeAgo = d => { const s=(Date.now()-new Date(d))/1000; return s<<3600?`Hace ${Math.round(s/60)}min`:s<<86400?`Hace ${Math.round(s/3600)}h`:`Hace ${Math.round(s/86400)}d`; };
     el.innerHTML = filtered.map(a => {
       const total = a.votosSi + a.votosNo;
       const pct = total > 0 ? Math.round(a.votosSi / total * 100) : 100;
