@@ -196,8 +196,8 @@ footer{padding:36px 24px;background:var(--bg-void);border-top:1px solid var(--bo
     <a href="#rutas" class="nav-link">Rutas</a>
   </div>
   <div class="nav-actions">
-    <button class="btn-ghost" onclick="openAuth('login')">Ingresar</button>
-    <button class="btn-primary" onclick="openAuth('register')">Comenzar gratis</button>
+    <button class="btn-ghost" onclick="typeof openAuth==='function'?openAuth('login'):void 0">Ingresar</button>
+    <button class="btn-primary" onclick="typeof openAuth==='function'?openAuth('register'):void 0">Comenzar gratis</button>
   </div>
   <button class="nav-mobile-toggle" onclick="toggleMobileMenu()">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="hamburger-icon">
@@ -231,7 +231,7 @@ footer{padding:36px 24px;background:var(--bg-void);border-top:1px solid var(--bo
       Conoce cuándo pasa el camión por tu barrio, reporta problemas y conecta con recicladores de Neiva.
     </p>
     <div class="hero-btns" id="hero-btns">
-      <button class="btn-primary" style="font-size:1rem;padding:15px 38px" onclick="openAuth('register')">
+      <button class="btn-primary" style="font-size:1rem;padding:15px 38px" onclick="typeof openAuth==='function'?openAuth('register'):void 0">
         Comenzar gratis
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
@@ -322,7 +322,7 @@ footer{padding:36px 24px;background:var(--bg-void);border-top:1px solid var(--bo
       <div class="card zona-card"><div class="zona-header"><div class="zona-dot" style="background:#b2dfdb"></div><span class="zona-label">Zona 05</span></div><div class="zona-name">Norte — Galindo</div><div class="zona-comunas">Comuna 9</div><div class="zona-dias">📅 Lun a Sáb</div><div class="zona-horario">⏰ 7AM – 3PM</div></div>
     </div>
     <div style="text-align:center;margin-top:36px">
-      <button class="btn-primary" onclick="openAuth('register')">Ver mapa interactivo →</button>
+      <button class="btn-primary" onclick="typeof openAuth==='function'?openAuth('register'):void 0">Ver mapa interactivo →</button>
     </div>
   </div>
 </section>
@@ -334,8 +334,8 @@ footer{padding:36px 24px;background:var(--bg-void);border-top:1px solid var(--bo
       <h2>Únete a la comunidad <span class="gradient-text">Trankas</span></h2>
       <p>Haz parte del cambio en Neiva. Gestiona tus residuos de forma inteligente.</p>
       <div class="cta-btns">
-        <button class="btn-primary" style="font-size:1rem;padding:14px 36px" onclick="openAuth('register')">Crear cuenta gratis</button>
-        <button class="btn-outline" onclick="openAuth('login')">Ya tengo cuenta</button>
+        <button class="btn-primary" style="font-size:1rem;padding:14px 36px" onclick="typeof openAuth==='function'?openAuth('register'):void 0">Crear cuenta gratis</button>
+        <button class="btn-outline" onclick="typeof openAuth==='function'?openAuth('login'):void 0">Ya tengo cuenta</button>
       </div>
     </div>
   </div>

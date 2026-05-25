@@ -2,6 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const AppleStrategy = require('passport-apple');
 const path = require('path');
 const db = require('./db');
 const { requireAuth } = require('./middleware/auth');
@@ -15,12 +18,97 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'trankas-secret-2025',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 }
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  }
 }));
 
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(passport.initialize());
+app.use(passport.session());
+const PUBLIC_DIR = path.join(__dirname, '../public');
+app.use(express.static(PUBLIC_DIR, { maxAge: '1d' }));
+
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await db.getUserById(id);
+    done(null, user);
+  } catch (e) {
+    done(e, null);
+  }
+});
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: `${process.env.APP_URL || 'http://localhost:3000'}/auth/google/callback`
+  }, async (accessToken, refreshToken, profile, done) => {
+    try {
+      const email = profile.emails?.[0]?.value;
+      if (!email) return done(new Error('No email from Google'), null);
+      let user = await db.getUserByEmail(email);
+      if (!user) {
+        user = await db.createUser({
+          name: profile.displayName,
+          email,
+          provider: 'google',
+          image: profile.photos?.[0]?.value || null
+        });
+      } else if (!user.image && profile.photos?.[0]?.value) {
+        user = await db.updateUser(user.id, { image: profile.photos[0].value });
+      }
+      done(null, user);
+    } catch (e) {
+      done(e, null);
+    }
+  }));
+}
+
+if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY) {
+  passport.use(new AppleStrategy({
+    clientID: process.env.APPLE_CLIENT_ID,
+    teamID: process.env.APPLE_TEAM_ID,
+    keyID: process.env.APPLE_KEY_ID,
+    privateKeyString: process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    callbackURL: `${process.env.APP_URL || 'http://localhost:3000'}/auth/apple/callback`,
+    passReqToCallback: true
+  }, async (req, accessToken, refreshToken, idToken, profile, done) => {
+    try {
+      const email = idToken?.email || req.body?.user ? JSON.parse(req.body.user || '{}').email : null;
+      const name = req.body?.user ? (() => { try { const u = JSON.parse(req.body.user); return `${u.name?.firstName || ''} ${u.name?.lastName || ''}`.trim(); } catch { return 'Usuario Apple'; } })() : 'Usuario Apple';
+      if (!email) return done(new Error('No email from Apple'), null);
+      let user = await db.getUserByEmail(email);
+      if (!user) {
+        user = await db.createUser({ name, email, provider: 'apple' });
+      }
+      done(null, user);
+    } catch (e) {
+      done(e, null);
+    }
+  }));
+}
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/?error=google' }),
+  (req, res) => {
+    req.session.userId = req.user.id;
+    res.redirect('/dashboard');
+  }
+);
+
+app.post('/auth/apple/callback',
+  passport.authenticate('apple', { failureRedirect: '/?error=apple' }),
+  (req, res) => {
+    req.session.userId = req.user.id;
+    res.redirect('/dashboard');
+  }
+);
 
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password, phone } = req.body;
@@ -30,7 +118,6 @@ app.post('/api/auth/register', async (req, res) => {
   if (existing) return res.status(400).json({ error: 'Este correo ya está registrado' });
   const user = await db.createUser({ name, email, password, phone });
   req.session.userId = user.id;
-  req.session.email = user.email;
   const { password: _, ...safeUser } = user;
   res.json({ success: true, user: safeUser });
 });
@@ -40,11 +127,10 @@ app.post('/api/auth/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
   const user = await db.getUserByEmail(email);
   if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
-  if (!user.password) return res.status(401).json({ error: 'Esta cuenta usa login social' });
+  if (!user.password) return res.status(401).json({ error: 'Esta cuenta usa login con Google o Apple' });
   const valid = await db.verifyPassword(password, user.password);
   if (!valid) return res.status(401).json({ error: 'Contraseña incorrecta' });
   req.session.userId = user.id;
-  req.session.email = user.email;
   const { password: _, ...safeUser } = user;
   res.json({ success: true, user: safeUser });
 });
@@ -137,8 +223,8 @@ app.post('/api/ai/chat', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, '../public/dashboard.html')));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'dashboard.html')));
+app.get('*', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Trankas running on port ${PORT}`));

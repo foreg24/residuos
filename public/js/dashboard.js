@@ -977,5 +977,4 @@ function toast(msg, type = 'success') {
   setTimeout(() => t.remove(), 4000);
 }
 
-setTimeout(() => initReportMap(), 500);
-init();
+if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", init); } else { init(); }
