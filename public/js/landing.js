@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const FRAME_COUNT = 60;
-  const FRAME_PATH = i => `/frames/${String(i+1).padStart(4,'0')}.jpg`;
+  const FRAME_PATH = i => `/frames/${String(i+1).padStart(4,'0')}.png`;
   const images = [];
   let loaded = 0;
 
